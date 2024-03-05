@@ -24,14 +24,14 @@ public class Product {
 
     private String description;
 
-    public Product(Long article, String description) {
-        this.article = article;
-        this.description = description;
-    }
-
     public Product(ProductDto dto) {
         this.article = dto.article();
         this.description = dto.description();
+    }
+
+    @Transient
+    public ProductDto getDto () {
+        return new ProductDto(article, description);
     }
 
 }

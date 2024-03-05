@@ -4,12 +4,14 @@ package com.example.product.service;
 import com.example.product.dto.ProductDto;
 import com.example.product.entity.CurrencyUnit;
 import com.example.product.entity.Product;
+import com.example.product.dto.ProductInfoDto;
 import com.example.product.entity.Storefront;
 import com.example.product.repository.ProductRepository;
 import com.example.product.repository.StorefrontRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -19,6 +21,7 @@ import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ProductService {
 
     @Autowired
@@ -33,10 +36,10 @@ public class ProductService {
         return (ArrayList<Product>) products;
     }
 
-    public Long createNewProduct(ProductDto productDto) {
+    public Product createNewProduct(ProductDto productDto) {
 
         Product product = productRepository.save(new Product(productDto));
-        return product.getId();
+        return product;
     }
 
     public Optional<Product> getProduct(long id) {
@@ -81,4 +84,16 @@ public class ProductService {
 
         return newProducts.size();
     }
+
+    public Optional<ProductInfoDto> getProductInfo(Long id) {
+        ProductInfoDto productInfo = productRepository.getProductInfo(id);
+        return Optional.ofNullable(productInfo);
+    }
+
+    public List<ProductInfoDto> getArticles(Long[] articles) {
+        List<ProductInfoDto> products = productRepository.getArticles(articles);
+        return products;
+    }
+
+
 }

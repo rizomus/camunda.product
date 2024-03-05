@@ -1,19 +1,15 @@
 server:
-  port: 8002
+  port: 8011
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    username: postgres
-    password: postgres
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432}/${DATABASE_NAME:postgres}?currentSchema=${DATABASE_SCHEMA:public}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-
 
   jpa:
     hibernate:
       ddl-auto: create
 
     show-sql: true
-
-    properties:
-      hibernate.default_schema: product_schema
