@@ -1,14 +1,16 @@
 package com.example.product.controller;
 
 import com.example.product.dto.OrderDto;
-import com.example.product.dto.ProductInfoDto;
-import com.example.product.dto.StorefrontDto;
+import com.example.product.dto.ProductDto;
 import com.example.product.entity.Product;
+import com.example.product.exception.ArticlesNotFoundException;
+import com.example.product.exception.NotEnoughAmountForReserve;
 import com.example.product.service.ProductService;
-import com.example.product.service.StorfontService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,12 +24,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/product")
+@Slf4j
 public class ProductController {
 
     @Autowired
     ProductService productService;
-    @Autowired
-    StorfontService storefrontService;
 
 
     @GetMapping("/all")
@@ -37,46 +38,50 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductInfoDto> getProduct(@PathVariable long id) {
-        ProductInfoDto productInfo = null;
+    public ResponseEntity<ProductDto> getProduct(@PathVariable long id) {
+        Product product = null;
         try {
-            productInfo = productService.getProductInfo(id).orElseThrow(() -> new RuntimeException("No such productInfo") );
+            product = productService.getProduct(id).orElseThrow(() -> new RuntimeException("No such productInfo") );
         } catch (RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-        productService.getProductInfo(productInfo.getId());
-        return new ResponseEntity<>(productInfo, HttpStatus.OK);
+        return new ResponseEntity<>(product.getDto(), HttpStatus.OK);
     }
 
     @GetMapping("/articles")
-    public ResponseEntity<List<ProductInfoDto>> getArticles(@RequestBody Long[] articles) {
+    public ResponseEntity<List<ProductDto>> getArticles(@RequestBody Long[] articles) {
 
         Arrays.stream(articles).forEach(System.out::println);
-        List<ProductInfoDto> products = productService.getArticles(articles);
+        List<ProductDto> products = productService.getArticles(articles);
 
         System.out.println(products);
 
         return new ResponseEntity<>(products, HttpStatus.OK);
     }
 
+
     @PostMapping("/order")
-    public void newOrder(@RequestBody OrderDto[] order) {
-        Arrays.stream(order).forEach(System.out::println);
+    public ResponseEntity<Object> newOrder(@RequestBody OrderDto[] orderList) throws InterruptedException {
+        try {
+            productService.reserveOrder(orderList);
 
+        } catch (ArticlesNotFoundException | NotEnoughAmountForReserve e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
 
+        } catch (ObjectOptimisticLockingFailureException e) {
+            ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
+        return ResponseEntity.ok().body(null);
     }
 
-//    @PostMapping("/new")
-//    public ResponseEntity<Long> createNewProduct(@RequestBody ProductDto productDto) {
-//        long id = productService.createNewProduct(productDto);
-//        return new ResponseEntity<>(id, HttpStatus.CREATED);
-//    }
 
     @PostMapping("/new")
-    public ResponseEntity<Long> createNewProduct(@RequestBody StorefrontDto storefrontDto) {
-        long id = storefrontService.createStorefront(storefrontDto);
+    public ResponseEntity<Long> createNewProduct(@RequestBody ProductDto dto) {
+
+        long id = productService.createNewProduct(dto);
         return new ResponseEntity<>(id, HttpStatus.CREATED);
     }
+
 
     @PostMapping("/test-content-load")
     public ResponseEntity<Long> createNewProduct() {

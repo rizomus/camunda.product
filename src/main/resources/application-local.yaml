@@ -12,3 +12,9 @@ spring:
     console:
       # http://localhost:8080/h2-console
       enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    com.example.product: DEBUG
