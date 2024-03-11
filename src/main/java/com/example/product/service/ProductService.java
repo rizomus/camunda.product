@@ -2,10 +2,12 @@ package com.example.product.service;
 
 
 import com.example.product.dto.OrderDto;
+import com.example.product.dto.OrderReserveDto;
 import com.example.product.dto.ProductDto;
 import com.example.product.entity.CurrencyUnit;
 import com.example.product.entity.Product;
 import com.example.product.exception.ArticlesNotFoundException;
+import com.example.product.exception.DifferentCurrencyUnitsException;
 import com.example.product.exception.NotEnoughAmountForReserve;
 import com.example.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -77,7 +80,7 @@ public class ProductService {
         products.add(Product.builder()
                 .article(420L)
                 .description("Weed")
-                .cost(BigDecimal.valueOf(10000))
+                .cost(BigDecimal.valueOf(400))
                 .currencyUnit(CurrencyUnit.RUB)
                 .amount(50).build());
 
@@ -101,16 +104,20 @@ public class ProductService {
 
     public void rollbackReserveOrder(ArrayList<OrderDto> order) {
         for (var position : order) {
-            productRepository.rollbackReserveArticle(position.article(), position.count());
+            productRepository.rollbackReserveArticle(position.article(), position.amount());
         }
     }
 
 
-    public void reserveOrder(OrderDto[] orderList) throws InterruptedException, StaleObjectStateException {
+    public OrderReserveDto reserveOrder(OrderDto[] orderList) throws InterruptedException, StaleObjectStateException {
+
+        long ORDER_ID = orderList[0].orderId();
 
         long[] wantedArticles = Arrays.stream(orderList).map(OrderDto::article).mapToLong(Long::longValue).toArray();
         Map<Long, OrderDto> wantedProdMap = Arrays.stream(orderList).collect(Collectors.toMap(OrderDto::article, o -> o));
         Product product = null;
+        BigDecimal paymentSum = BigDecimal.valueOf(0);
+        HashSet<CurrencyUnit> currencyUnits = new HashSet<>();
 
         List<Product> existingProducts = productRepository.getAllByArticleIn(wantedArticles);
         Set<Long> existingArticles = existingProducts.stream().map(Product::getArticle).collect(Collectors.toSet());
@@ -122,15 +129,17 @@ public class ProductService {
             log.error("Articles not found: " + notFindArticles);
             throw new ArticlesNotFoundException("Articles not found: " + notFindArticles);
 
-        } else {                                    // all articles found, check wanted amount
+        } else {                                    // all articles found, check wanted amount and currency
             for (long article : wantedArticles) {
                 product = existingProductsMap.get(article);
-                int amount = wantedProdMap.get(article).count();
-                if (wantedProdMap.get(article).count() > existingProductsMap.get(article).getAmount()) {
+                int amount = wantedProdMap.get(article).amount();
+                currencyUnits.add(product.getCurrencyUnit());
+                if (wantedProdMap.get(article).amount() > existingProductsMap.get(article).getAmount()) {
                     log.error("Not enough amount for reserve for article: " + article);
                     throw new NotEnoughAmountForReserve("Not enough amount for reserve for article: " + article);
                 }
             }
+            if (currencyUnits.size() > 1) throw new DifferentCurrencyUnitsException("Different Currency Units");
 
 //            if (n == 1) {
 //                n++;
@@ -141,10 +150,15 @@ public class ProductService {
 
             for (long article : wantedArticles) {                   // amount checked, go reserve
                 product = existingProductsMap.get(article);
-                long orderId = wantedProdMap.get(article).orderId();
-                int amount = wantedProdMap.get(article).count();
-                product.addReserve(orderId, amount);
+                int amount = wantedProdMap.get(article).amount();
+                product.addReserve(ORDER_ID, amount);
+                paymentSum = paymentSum.add(BigDecimal.valueOf(product.getCost().intValue() * amount));
             }
         }
+        return OrderReserveDto.builder()
+                .orderId(ORDER_ID)
+                .paymentSum(paymentSum)
+                .currencyUnit(currencyUnits.stream().findFirst().get())
+                .build();
     }
 }

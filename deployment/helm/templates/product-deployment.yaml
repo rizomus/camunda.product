@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product
+
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: product-label
+
+  template:
+    metadata:
+      labels:
+        app: product-label
+    spec:
+      containers:
+        - name: product
+          image: rizomus/camunda-product
+          ports:
+            - containerPort: 8012
+              name: web
+          env:
+            - name: DATABASE_URL
+              value: "jdbc:postgresql://product-db-svc:5432"
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: product-configmap
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: product-configmap
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: product-configmap
+                  key: POSTGRES_PASSWORD
+
+

@@ -6,6 +6,6 @@ public record OrderDto (
         Long article,
 
         String description,
-        int count
+        int amount
 ){
 }

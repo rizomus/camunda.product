@@ -13,15 +13,6 @@ import java.util.List;
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query(value = """
-             SELECT new com.example.product.dto.ProductInfoDto(p.id, p.article, p.description, s.cost, s.currencyUnit, s.amount )
-             
-                        FROM Storefront s
-                        JOIN s.product p
-                        WHERE p.id = ?1
-            """)
-    public ProductDto getProductInfo(Long id);
-
-    @Query(value = """
              SELECT p.article, p.description, p.cost, p.currencyUnit, p.amount
              FROM Product p
              WHERE p.article in ?1

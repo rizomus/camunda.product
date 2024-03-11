@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-svc
+spec:
+  selector:
+    app: product-label            #должно соответствовать лейблу пода
+  ports:
+    - protocol: TCP
+      name: web
+      port: 8012        #порт сервиса
+      targetPort: 8012    #порт пода (порт, который открыт у контейнера)
+
+  type: ClusterIP
+  clusterIP: None
