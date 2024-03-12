@@ -36,5 +36,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("UPDATE Product p SET p.amount = p.amount + ?2 WHERE p.article = ?1")
     public int rollbackReserveArticle(long article, int amount);
 
+    @Query(value = """
+            SELECT p.id FROM Product p
+            JOIN Reserve r
+            ON r.product_id = p.id
+            WHERE r.order_id = ?1
+            """,
+            nativeQuery = true)
+    public List<Long> getReservedArticles(long order_id);
 }
 

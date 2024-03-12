@@ -7,6 +7,7 @@ import com.example.product.entity.Product;
 import com.example.product.exception.ArticlesNotFoundException;
 import com.example.product.exception.DifferentCurrencyUnitsException;
 import com.example.product.exception.NotEnoughAmountForReserve;
+import com.example.product.exception.ReserveNotFoundException;
 import com.example.product.service.ProductService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -66,7 +68,10 @@ public class ProductController {
     public ResponseEntity<Object> newOrder(@RequestBody OrderDto[] orderList) throws InterruptedException {
 
         for (var order : orderList) {
-            log.debug("position: " + order);
+            log.debug("     position: " + order);
+            if (order.amount() == 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Amount is 0 for article " + order.article());
+            }
         }
 
         OrderReserveDto orderReserveDto = null;
@@ -81,6 +86,20 @@ public class ProductController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
         return ResponseEntity.ok().body(orderReserveDto);
+    }
+
+
+    @PostMapping("/unreserve")
+    public ResponseEntity<Object> unreserveOrder(@RequestParam long order_id) {
+
+        log.debug("Unreserving order " + order_id);
+
+        try {
+            productService.unreserveOrder(order_id);
+        } catch (ReserveNotFoundException e) {     //TODO
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+        return ResponseEntity.ok().build();
     }
 
 

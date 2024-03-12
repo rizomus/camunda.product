@@ -9,7 +9,9 @@ import com.example.product.entity.Product;
 import com.example.product.exception.ArticlesNotFoundException;
 import com.example.product.exception.DifferentCurrencyUnitsException;
 import com.example.product.exception.NotEnoughAmountForReserve;
+import com.example.product.exception.ReserveNotFoundException;
 import com.example.product.repository.ProductRepository;
+import com.example.product.repository.ReserveRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.StaleObjectStateException;
@@ -35,6 +37,8 @@ public class ProductService {
 
     @Autowired
     ProductRepository productRepository;
+    @Autowired
+    ReserveRepository reserveRepository;
 
 //    @PersistenceContext
 //    private EntityManager entityManager;
@@ -141,12 +145,6 @@ public class ProductService {
             }
             if (currencyUnits.size() > 1) throw new DifferentCurrencyUnitsException("Different Currency Units");
 
-//            if (n == 1) {
-//                n++;
-//                log.debug("--- SLEEPING ---");
-//                Thread.sleep(5000);
-//                log.debug("--- AWAKING ---");
-//            }
 
             for (long article : wantedArticles) {                   // amount checked, go reserve
                 product = existingProductsMap.get(article);
@@ -160,5 +158,28 @@ public class ProductService {
                 .paymentSum(paymentSum)
                 .currencyUnit(currencyUnits.stream().findFirst().get())
                 .build();
+    }
+
+    public void unreserveOrder(long ORDER_ID) {
+
+        List<Long> reservedIds = productRepository.getReservedArticles(ORDER_ID);
+
+        if (reservedIds.size() == 0) throw new ReserveNotFoundException("Order " + ORDER_ID + " not found");
+
+        log.debug("reservedArticles: " + reservedIds);
+
+        List<Product> products = productRepository.findAllById(reservedIds);
+
+        HashSet<Integer> unreservedIds = new HashSet<>();
+
+        for (Product product: products) {
+            Integer unreservedId = product.cancelReserve(ORDER_ID)
+                    .orElseThrow(
+                            () -> new ReserveNotFoundException("Reserve not found for " + product + "; order_id = " + ORDER_ID));
+            unreservedIds.add(unreservedId);
+        }
+
+        reserveRepository.deleteAllById(unreservedIds);
+
     }
 }

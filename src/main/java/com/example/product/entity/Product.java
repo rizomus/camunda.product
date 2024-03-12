@@ -20,6 +20,7 @@ import org.hibernate.annotations.Check;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Entity
 @NoArgsConstructor
@@ -85,5 +86,18 @@ public class Product {
                     .append(" в количестве ").append(amount).append(".")
                     .append(" В наличии ").append(this.amount).append(". ").toString());
         }
+    }
+
+    public Optional<Integer> cancelReserve(long order_id) {
+
+        for (int i = 0; i < this.reserve.size(); i++) {
+            Reserve res = this.reserve.get(i);
+            if (res.getOrderId() == order_id) {
+                this.amount += res.getAmount();
+                this.reserve.remove(i);
+                return Optional.of(res.getId());
+            }
+        }
+        return Optional.empty() ;       // order_id not found
     }
 }
